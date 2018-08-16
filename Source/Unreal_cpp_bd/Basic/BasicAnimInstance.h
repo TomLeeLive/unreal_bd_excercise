@@ -22,4 +22,10 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "State")
 	float Direction;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "State")
+	bool bIsCrouch;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "State")
+	bool bIsIronsight;
 };

@@ -14,5 +14,8 @@ void UBasicAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 		Direction = CalculateDirection(Pawn->GetCharacterMovement()->Velocity,
 			Pawn->GetActorRotation());
+
+		bIsCrouch = Pawn->bIsCrouched;
+		bIsIronsight = Pawn->bIsIronSight;
 	}
 }

@@ -39,5 +39,48 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 	class UCameraComponent* Camera;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		class UWeaponComponent* Weapon;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bIsIronSight = false;
 	
+	void TryCrouch();
+
+	void TryIronsight();
+
+	void StartFire();
+	void StopFire();
+	void Shoot();
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float JogSpeed = 360.0f;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float WalkSpeed = 150.0f;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float CrouchSpeed = 150.0f;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bIsFire = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float FireTimer = 0.2f;
+
+	FTimerHandle ShootTimerHandle;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+	class UParticleSystem* HitEffect;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+	class UParticleSystem* MuzzleFlash;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+	class USoundBase* ShootSound;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+	class UMaterialInstance* BulletDecal;
+
 };
