@@ -17,5 +17,9 @@ void UBasicAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 		bIsCrouch = Pawn->bIsCrouched;
 		bIsIronsight = Pawn->bIsIronSight;
+
+		AimPitch = Pawn->GetAimOffset().Pitch;
+		AimYaw = Pawn->GetAimOffset().Yaw;
+		bIsFire = Pawn->bIsFire;
 	}
 }

@@ -18,6 +18,8 @@
 #include "Particles/ParticleSystem.h"
 #include "Sound/SoundBase.h"
 #include "Materials/MaterialInstance.h"
+#include "Components/DecalComponent.h"
+#include "Basic/RifleCameraShake.h"
 
 // Sets default values
 ABasicPlayer::ABasicPlayer()
@@ -77,6 +79,13 @@ ABasicPlayer::ABasicPlayer()
 		HitEffect = P_HitEffect.Object;
 	}
 
+	static  ConstructorHelpers::FObjectFinder<UParticleSystem> P_BloodEffect(TEXT("ParticleSystem'/Game/Effects/P_body_bullet_impact.P_body_bullet_impact'"));
+
+	if (P_BloodEffect.Succeeded())
+	{
+		BloodEffect = P_BloodEffect.Object;
+	}
+
 	static  ConstructorHelpers::FObjectFinder<UParticleSystem> P_MuzzleFlash(TEXT("ParticleSystem'/Game/Effects/P_AssaultRifle_MF.P_AssaultRifle_MF'"));
 
 	if (P_MuzzleFlash.Succeeded())
@@ -102,6 +111,13 @@ ABasicPlayer::ABasicPlayer()
 	//GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 	//GetMesh()->SetAnimInstanceClass();
 
+	//GetCharacterMovement()->CrouchedHalfHeight = 88.0f;
+	GetCharacterMovement()->CrouchedHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+	NormalSpringArmPosition = SpringArm->GetRelativeTransform().GetLocation();
+	CrouchSpringArmPosition = FVector(NormalSpringArmPosition.X,
+		NormalSpringArmPosition.Y,
+		NormalSpringArmPosition.Z - 40.0f);
 
 }
 
@@ -244,7 +260,7 @@ void ABasicPlayer::Shoot()
 
 	ObjectType.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldDynamic));
 	ObjectType.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic));
-	ObjectType.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn));
+	ObjectType.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_PhysicsBody));
 
 	IgnoreActors.Add(this);
 
@@ -255,7 +271,7 @@ void ABasicPlayer::Shoot()
 		ObjectType,		//트레이싱 검출 될 오브젝트 타입들
 		false,			//복합 컬리전 사용 여부
 		IgnoreActors,	// 무시 액터 리스트
-		EDrawDebugTrace::ForDuration, //디버그 라인 그리기 설정
+		EDrawDebugTrace::None,//EDrawDebugTrace::ForDuration, //디버그 라인 그리기 설정
 		OutHit,			//충돌 정보
 		true,			//자기 자신 제외
 		FLinearColor::Red,	//디버그 라인 색깔.
@@ -266,15 +282,70 @@ void ABasicPlayer::Shoot()
 
 	if (Result)
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
-			HitEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+		TraceStart = Weapon->GetSocketLocation(FName(TEXT("MuzzleFlash")));
+		FVector Dir = OutHit.ImpactPoint - TraceStart;
+		TraceEnd = TraceStart + (Dir * 2.0f);
 
-		UGameplayStatics::SpawnDecalAtLocation(GetWorld(),
-			BulletDecal,
-			FVector(5.0f, 5.0f, 5.0f),
-			OutHit.ImpactPoint,
-			FRotator(-90, 0, 0), 3.0f);
+		//광선 추적
+		Result = UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(),
+			TraceStart,		//트레이스 시작점
+			TraceEnd,		//트레이스 끝점
+			ObjectType,		//트레이싱 검출 될 오브젝트 타입들
+			true,			//복합 컬리전 사용 여부
+			IgnoreActors,	// 무시 액터 리스트
+			EDrawDebugTrace::None,//EDrawDebugTrace::ForDuration, //디버그 라인 그리기 설정
+			OutHit,			//충돌 정보
+			true,			//자기 자신 제외
+			FLinearColor::Green,	//디버그 라인 색깔.
+			FLinearColor::Blue, //충돌 지역 디버그 박스 색깔.
+			5.0					//디버그 라인 그리는 시간.
+		);
+
+		//총구 끝에서 총알이 나가서 맞았는지 확인
+		if (Result)
+		{
+			APawn* Hitter = Cast<APawn>(OutHit.GetActor());
+
+			if (Hitter)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
+					BloodEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+
+				UGameplayStatics::ApplyPointDamage(OutHit.GetActor(),
+					30.0f,
+					TraceEnd - TraceStart,
+					OutHit,
+					GetController(),
+					this,
+					nullptr);
+			}
+			else
+			{
+				//탄흔 이펙트
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
+					HitEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+
+				//총알 구멍, 데칼
+				UDecalComponent* Decal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(),
+					BulletDecal,
+					FVector(0.3f, 5.0f, 5.0f),
+					OutHit.ImpactPoint, OutHit.ImpactNormal.Rotation(), 10.0f);
+
+				Decal->SetFadeScreenSize(0.01f); //화면이 차지하는 비율보다 작으면 안보이게
+			}
+
+		}
+
 	}
+
+	//반동 카메라 흔들기
+	UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0)->PlayCameraShake(URifleCameraShake::StaticClass());
+
+	//총구 방향 반동 주기
+	FRotator CurrentRotation = GetControlRotation();
+	CurrentRotation.Pitch += 2.0f;
+	CurrentRotation.Yaw += FMath::RandRange(-1.5f, 1.5f);
+	GetController()->SetControlRotation(CurrentRotation);
 
 	//총소리
 	UGameplayStatics::SpawnSoundAtLocation(GetWorld(),
@@ -291,4 +362,33 @@ void ABasicPlayer::Shoot()
 	{
 		GetWorldTimerManager().SetTimer(ShootTimerHandle, this, &ABasicPlayer::Shoot, FireTimer);
 	}
+}
+
+FRotator ABasicPlayer::GetAimOffset() const
+{
+	const FVector AimDirWS = GetBaseAimRotation().Vector();
+	const FVector AimDirLS = ActorToWorld().InverseTransformVectorNoScale(AimDirWS);
+	const FRotator AimRotLS = AimDirLS.Rotation();
+	return AimRotLS;
+}
+
+float ABasicPlayer::TakeDamage(float DamageAmount, FDamageEvent const & DamageEvent, AController * EventInstigator, AActor * DamageCauser)
+{
+	if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
+	{
+		UE_LOG(LogClass, Warning, TEXT("%f Damage"), DamageAmount);
+		FPointDamageEvent* PointDamageEvent = (FPointDamageEvent*)(&DamageEvent);
+		UE_LOG(LogClass, Warning, TEXT("%s Damage"), *PointDamageEvent->HitInfo.BoneName.ToString());
+	}
+	else if (DamageEvent.IsOfType(FRadialDamageEvent::ClassID))
+	{
+		FRadialDamageEvent* RadialDamageEvent = (FRadialDamageEvent*)(&DamageEvent);
+		//RadialDamageEvent->Params.
+	}
+	else if (DamageEvent.IsOfType(FDamageEvent::ClassID))
+	{
+
+	}
+
+	return DamageAmount;
 }

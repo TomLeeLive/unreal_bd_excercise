@@ -28,4 +28,13 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "State")
 	bool bIsIronsight;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "State")
+		float AimYaw;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "State")
+		float AimPitch;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "State")
+		bool bIsFire;
 };

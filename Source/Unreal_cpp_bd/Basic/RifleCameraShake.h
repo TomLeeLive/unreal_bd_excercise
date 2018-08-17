@@ -3,19 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
-#include "BasicPC.generated.h"
+#include "Camera/CameraShake.h"
+#include "RifleCameraShake.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class UNREAL_CPP_BD_API ABasicPC : public APlayerController
+class UNREAL_CPP_BD_API URifleCameraShake : public UCameraShake
 {
 	GENERATED_BODY()
-	
-	
+
+
 public:
-	ABasicPC();
+		URifleCameraShake();
 	
 };

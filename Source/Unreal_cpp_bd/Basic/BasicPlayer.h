@@ -75,6 +75,9 @@ public:
 	class UParticleSystem* HitEffect;
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		class UParticleSystem* BloodEffect;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 	class UParticleSystem* MuzzleFlash;
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
@@ -83,4 +86,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 	class UMaterialInstance* BulletDecal;
 
+	FRotator GetAimOffset() const;
+
+	FVector NormalSpringArmPosition;
+	FVector CrouchSpringArmPosition;
+
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 };

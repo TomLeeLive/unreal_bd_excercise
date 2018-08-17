@@ -21,8 +21,8 @@ void ABasicHUD::DrawHUD()
 	Super::DrawHUD();
 	if (Crosshair)
 	{
-		DrawTextureSimple(Crosshair, 
+		DrawTextureSimple(Crosshair,
 			Canvas->SizeX / 2 - Crosshair->GetSizeX() / 2,
-			Canvas->SizeY / 2);
+			Canvas->SizeY / 2 - Crosshair->GetSizeY() / 2);
 	}
 }
