@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "BasicPC.generated.h"
-
 /**
  * 
  */
@@ -18,4 +17,17 @@ class UNREAL_CPP_BD_API ABasicPC : public APlayerController
 public:
 	ABasicPC();
 	
+	virtual void BeginPlay() override;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	class UItemToolTipWidgetBase* ItemTooltipWidget;
+
+	//BP의 위젯 블루프린트 클래스만 받는 변수
+	TSubclassOf<UUserWidget> WidgetClass;
+
+	UFUNCTION(BlueprintCallable)
+	void SetItemName(FString ItemName);
+
+	UFUNCTION(BlueprintCallable)
+	void ShowItemToolTip(bool bShow);
 };

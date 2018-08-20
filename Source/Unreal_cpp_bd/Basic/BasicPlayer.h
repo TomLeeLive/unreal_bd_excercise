@@ -92,4 +92,19 @@ public:
 	FVector CrouchSpringArmPosition;
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float CurrentHP;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float MaxHP = 100.0f;
+
+	TArray<class AMasterItem*> CanPickupList;
+
+	UFUNCTION(BlueprintCallable)
+	void AddPickupItemList(class AMasterItem* Item);
+
+	UFUNCTION(BlueprintCallable)
+	void RemovePickupItemList(class AMasterItem* Item);
+	void ViewItemToolTip();
 };

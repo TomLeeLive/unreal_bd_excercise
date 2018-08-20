@@ -20,6 +20,10 @@
 #include "Materials/MaterialInstance.h"
 #include "Components/DecalComponent.h"
 #include "Basic/RifleCameraShake.h"
+#include "Basic/BasicDamageType.h"
+#include "Item/MasterItem.h"
+#include "Basic/BasicPC.h"
+//#include "UI/ItemToolTipWidgetBase.h"
 
 // Sets default values
 ABasicPlayer::ABasicPlayer()
@@ -126,6 +130,7 @@ void ABasicPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	CurrentHP = MaxHP;
 }
 
 // Called every frame
@@ -282,59 +287,70 @@ void ABasicPlayer::Shoot()
 
 	if (Result)
 	{
-		TraceStart = Weapon->GetSocketLocation(FName(TEXT("MuzzleFlash")));
-		FVector Dir = OutHit.ImpactPoint - TraceStart;
-		TraceEnd = TraceStart + (Dir * 2.0f);
+	TraceStart = Weapon->GetSocketLocation(FName(TEXT("MuzzleFlash")));
+	FVector Dir = OutHit.ImpactPoint - TraceStart;
+	TraceEnd = TraceStart + (Dir * 2.0f);
 
-		//광선 추적
-		Result = UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(),
-			TraceStart,		//트레이스 시작점
-			TraceEnd,		//트레이스 끝점
-			ObjectType,		//트레이싱 검출 될 오브젝트 타입들
-			true,			//복합 컬리전 사용 여부
-			IgnoreActors,	// 무시 액터 리스트
-			EDrawDebugTrace::None,//EDrawDebugTrace::ForDuration, //디버그 라인 그리기 설정
-			OutHit,			//충돌 정보
-			true,			//자기 자신 제외
-			FLinearColor::Green,	//디버그 라인 색깔.
-			FLinearColor::Blue, //충돌 지역 디버그 박스 색깔.
-			5.0					//디버그 라인 그리는 시간.
+	//광선 추적
+	Result = UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(),
+		TraceStart,		//트레이스 시작점
+		TraceEnd,		//트레이스 끝점
+		ObjectType,		//트레이싱 검출 될 오브젝트 타입들
+		true,			//복합 컬리전 사용 여부
+		IgnoreActors,	// 무시 액터 리스트
+		EDrawDebugTrace::None,//EDrawDebugTrace::ForDuration, //디버그 라인 그리기 설정
+		OutHit,			//충돌 정보
+		true,			//자기 자신 제외
+		FLinearColor::Green,	//디버그 라인 색깔.
+		FLinearColor::Blue, //충돌 지역 디버그 박스 색깔.
+		5.0					//디버그 라인 그리는 시간.
+	);
+
+	//총구 끝에서 총알이 나가서 맞았는지 확인
+	if (Result)
+	{
+		/*
+		UGameplayStatics::ApplyRadialDamage(GetWorld(),
+			100.0f,
+			OutHit.ImpactPoint,
+			300.0f,
+			UBasicDamageType::StaticClass(),
+			IgnoreActors,
+			this,
+			GetController()
 		);
+		*/
+		APawn* Hitter = Cast<APawn>(OutHit.GetActor());
 
-		//총구 끝에서 총알이 나가서 맞았는지 확인
-		if (Result)
+		if (Hitter)
 		{
-			APawn* Hitter = Cast<APawn>(OutHit.GetActor());
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
+				BloodEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
 
-			if (Hitter)
-			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
-					BloodEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
-
-				UGameplayStatics::ApplyPointDamage(OutHit.GetActor(),
-					30.0f,
-					TraceEnd - TraceStart,
-					OutHit,
-					GetController(),
-					this,
-					nullptr);
-			}
-			else
-			{
-				//탄흔 이펙트
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
-					HitEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
-
-				//총알 구멍, 데칼
-				UDecalComponent* Decal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(),
-					BulletDecal,
-					FVector(0.3f, 5.0f, 5.0f),
-					OutHit.ImpactPoint, OutHit.ImpactNormal.Rotation(), 10.0f);
-
-				Decal->SetFadeScreenSize(0.01f); //화면이 차지하는 비율보다 작으면 안보이게
-			}
-
+			UGameplayStatics::ApplyPointDamage(OutHit.GetActor(),
+				30.0f,
+				TraceEnd - TraceStart,
+				OutHit,
+				GetController(),
+				this,
+				UBasicDamageType::StaticClass());
 		}
+		else
+		{
+			//탄흔 이펙트
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
+				HitEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+
+			//총알 구멍, 데칼
+			UDecalComponent* Decal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(),
+				BulletDecal,
+				FVector(0.3f, 5.0f, 5.0f),
+				OutHit.ImpactPoint, OutHit.ImpactNormal.Rotation(), 10.0f);
+
+			Decal->SetFadeScreenSize(0.01f); //화면이 차지하는 비율보다 작으면 안보이게
+		}
+
+	}
 
 	}
 
@@ -374,21 +390,108 @@ FRotator ABasicPlayer::GetAimOffset() const
 
 float ABasicPlayer::TakeDamage(float DamageAmount, FDamageEvent const & DamageEvent, AController * EventInstigator, AActor * DamageCauser)
 {
+	if (CurrentHP <= 0)
+	{
+		return 0;
+	}
+
+
 	if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
 	{
 		UE_LOG(LogClass, Warning, TEXT("%f Damage"), DamageAmount);
 		FPointDamageEvent* PointDamageEvent = (FPointDamageEvent*)(&DamageEvent);
+
+		if (PointDamageEvent->HitInfo.BoneName.Compare(TEXT("head")) == 0)
+		{
+			CurrentHP = 0;
+		}
+		else
+		{
+			CurrentHP -= DamageAmount;
+		}
+
 		UE_LOG(LogClass, Warning, TEXT("%s Damage"), *PointDamageEvent->HitInfo.BoneName.ToString());
+
+		//데미지 타입 처리 방법
+		if(PointDamageEvent->DamageTypeClass->IsChildOf(UBasicDamageType::StaticClass()))
+		{
+			//UBasicDamageType* Type = Cast<UBasicDamageType>(PointDamageEvent->DamageTypeClass);
+			UBasicDamageType* Type = NewObject<UBasicDamageType>(PointDamageEvent->DamageTypeClass);
+			if(Type)
+				UE_LOG(LogClass,Warning,TEXT("Position %d"), Type->PostitionDamage)
+		}
+
 	}
 	else if (DamageEvent.IsOfType(FRadialDamageEvent::ClassID))
 	{
 		FRadialDamageEvent* RadialDamageEvent = (FRadialDamageEvent*)(&DamageEvent);
 		//RadialDamageEvent->Params.
+		UE_LOG(LogClass, Warning, TEXT("Radial Damage %f"), DamageAmount);
 	}
 	else if (DamageEvent.IsOfType(FDamageEvent::ClassID))
 	{
 
 	}
 
+	if (CurrentHP <= 0)
+	{
+		CurrentHP = 0;
+		//죽는 처리
+		GetMesh()->SetSimulatePhysics(true);
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
 	return DamageAmount;
+}
+
+void ABasicPlayer::AddPickupItemList(AMasterItem * Item)
+{
+	//Null이 아니고 지워지는 리스트에 들은 액터가 아닌 경우
+	if (Item && !Item->IsPendingKill())
+	{
+		CanPickupList.Add(Item);
+	}
+
+	//Item이름 나오는 툴팁
+	ViewItemToolTip();
+}
+
+void ABasicPlayer::RemovePickupItemList(AMasterItem * Item)
+{
+	if (Item)
+	{
+		CanPickupList.Remove(Item);
+	}
+
+	//Item이름 나오는 툴팁
+	ViewItemToolTip();
+}
+
+void ABasicPlayer::ViewItemToolTip()
+{
+	//ABasicPC* PC = Cast<ABasicPC>(GetController());
+	ABasicPC* PC = Cast<ABasicPC>(UGameplayStatics::GetPlayerController(GetWorld(),0));
+
+	if (!PC)
+	{
+		return;
+	}
+
+	if (CanPickupList.Num() == 0)
+	{
+		PC->ShowItemToolTip(false);
+		return;
+	}
+
+	AMasterItem* CloseItem = CanPickupList[0];
+
+	if (CloseItem)
+	{
+		PC->ShowItemToolTip(true);
+		PC->SetItemName(CloseItem->Data.ItemName);
+	}
+	else
+	{
+		PC->ShowItemToolTip(false);
+	}
 }
