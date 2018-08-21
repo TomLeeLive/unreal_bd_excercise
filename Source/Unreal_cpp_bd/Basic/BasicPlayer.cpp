@@ -23,6 +23,11 @@
 #include "Basic/BasicDamageType.h"
 #include "Item/MasterItem.h"
 #include "Basic/BasicPC.h"
+#include "UI/ItemSlotWidgetBase.h"
+#include "UI/InventoryWidgetBase.h"
+//#include "Item/ItemDataTable.h"
+#include "Item/ItemDataTableComponent.h"
+
 //#include "UI/ItemToolTipWidgetBase.h"
 
 // Sets default values
@@ -155,6 +160,9 @@ void ABasicPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Pressed, this, &ABasicPlayer::StartFire);
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Released, this, &ABasicPlayer::StopFire);
 	//PlayerInputComponent->BindAction(TEXT("Fire"), IE_Repeat, this, &ABasicPlayer::Fire);
+
+	PlayerInputComponent->BindAction(TEXT("Pickup"), IE_Released, this, &ABasicPlayer::Pickup);
+	PlayerInputComponent->BindAction(TEXT("Inventory"), IE_Released, this, &ABasicPlayer::Inventory);
 }
 
 void ABasicPlayer::Pitch(float value)
@@ -483,7 +491,7 @@ void ABasicPlayer::ViewItemToolTip()
 		return;
 	}
 
-	AMasterItem* CloseItem = CanPickupList[0];
+	AMasterItem* CloseItem = GetClosestItem();
 
 	if (CloseItem)
 	{
@@ -494,4 +502,56 @@ void ABasicPlayer::ViewItemToolTip()
 	{
 		PC->ShowItemToolTip(false);
 	}
+}
+
+void ABasicPlayer::Pickup()
+{
+	AMasterItem* PickupItem = GetClosestItem();
+
+	if (PickupItem && !PickupItem->IsPendingKill())
+	{
+		ABasicPC* PC = Cast<ABasicPC>(GetController());
+		if (PC)
+		{
+			//bool Result = PC->InventoryWidget->InsertItem(PickupItem->DataTable->GetItemData(PickupItem->ItemIndex));
+			bool Result = PC->InventoryWidget->InsertItem(PickupItem->Data);
+
+			if (Result)
+			{
+				RemovePickupItemList(PickupItem);
+				PickupItem->Destroy();
+			}
+			else
+			{
+				UE_LOG(LogClass, Warning, TEXT("Inventory Full."));
+			}
+		}
+	}
+}
+
+void ABasicPlayer::Inventory()
+{
+	ABasicPC* PC = Cast<ABasicPC>(GetController());
+	if (PC)
+	{
+		PC->ToggleInventory();
+	}
+}
+
+AMasterItem* ABasicPlayer::GetClosestItem()
+{
+	AMasterItem* Result = nullptr;
+	float MinDistance = 99999999.9f;
+
+	for (auto Item : CanPickupList)
+	{
+		float  Distance = FVector::DistSquared(GetActorLocation(), Item->GetActorLocation());
+		if (MinDistance > Distance)
+		{
+			MinDistance = Distance;
+			Result = Item;
+		}
+	}
+
+	return Result;
 }

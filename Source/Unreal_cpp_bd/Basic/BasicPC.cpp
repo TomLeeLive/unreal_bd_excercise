@@ -5,6 +5,7 @@
 #include "UI/ItemToolTipWidgetBase.h"
 #include "ConstructorHelpers.h"
 #include "Components/TextBlock.h"
+#include "UI/InventoryWidgetBase.h"
 
 ABasicPC::ABasicPC()
 {
@@ -35,6 +36,20 @@ void ABasicPC::BeginPlay()
 		 //UI를 화면에 붙이기
 		 ItemTooltipWidget->AddToViewport();
 		 ItemTooltipWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	//BP를 경로 읽어 오기(실행중에)
+	FStringClassReference InventoryWidgetClass(TEXT("WidgetBlueprint'/Game/UI/InventoryWidget.InventoryWidget_C'"));
+
+	//위 경로로 위젯 클래스를 CDO에 생성
+	if (UClass* MyWidgetClass = InventoryWidgetClass.TryLoadClass<UUserWidget>())
+	{
+		//C++ Class로 인스턴스 생성, CDO에 있는 오브젝트를 실제로 생성(복사)
+		InventoryWidget = Cast<UInventoryWidgetBase>(CreateWidget<UUserWidget>(this, MyWidgetClass));
+
+		//UI를 화면에 붙이기
+		InventoryWidget->AddToViewport();
+		InventoryWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	
 
@@ -78,4 +93,20 @@ void ABasicPC::ShowItemToolTip(bool bShow)
 		}
 	}
 
+}
+
+void ABasicPC::ToggleInventory()
+{
+	if (InventoryWidget->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		InventoryWidget->SetVisibility(ESlateVisibility::Visible);
+		bShowMouseCursor = true;
+		SetInputMode(FInputModeGameAndUI()); // PC->Pawn Input Process, key 전달, 마우스 전달 X
+	}
+	else
+	{
+		InventoryWidget->SetVisibility(ESlateVisibility::Collapsed);
+		bShowMouseCursor = false;
+		SetInputMode(FInputModeGameOnly());
+	}
 }

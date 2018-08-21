@@ -107,4 +107,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RemovePickupItemList(class AMasterItem* Item);
 	void ViewItemToolTip();
+
+	void Pickup();
+
+	void Inventory();
+	AMasterItem * GetClosestItem();
 };

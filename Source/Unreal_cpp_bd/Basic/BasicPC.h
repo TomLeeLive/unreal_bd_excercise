@@ -22,6 +22,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	class UItemToolTipWidgetBase* ItemTooltipWidget;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	class UInventoryWidgetBase* InventoryWidget;
+
 	//BP의 위젯 블루프린트 클래스만 받는 변수
 	TSubclassOf<UUserWidget> WidgetClass;
 
@@ -30,4 +33,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void ShowItemToolTip(bool bShow);
+
+	void ToggleInventory();
 };
