@@ -103,4 +103,10 @@ void ABattlePC::ToggleInventory()
 	}
 }
 
+void ABattlePC::Dead()
+{
+	BeginSpectatingState();
+	//EndSpectatingState();
+}
+
 

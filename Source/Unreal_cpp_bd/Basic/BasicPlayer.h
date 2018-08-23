@@ -59,6 +59,28 @@ public:
 	void StopFire();
 	void Shoot();
 
+	UFUNCTION(Server, Reliable, WithValidation)
+	void C2S_Shoot(FVector TraceStart, FVector TraceEnd);
+	bool C2S_Shoot_Validate(FVector TraceStart, FVector TraceEnd);
+	void C2S_Shoot_Implementation(FVector TraceStart, FVector TraceEnd);
+
+	UFUNCTION(NetMulticast, Reliable)
+		void S2A_SpawnMuzzleFlashAndSound();
+	void S2A_SpawnMuzzleFlashAndSound_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+		void S2A_DeadProcess();
+	void S2A_DeadProcess_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+		void S2A_BloodEffect(FHitResult OutHit);
+	void S2A_BloodEffect_Implementation(FHitResult OutHit);
+
+	UFUNCTION(NetMulticast, Reliable)
+		void S2A_SpawnDecalAndHitEffect(FHitResult OutHit);
+	void S2A_SpawnDecalAndHitEffect_Implementation(FHitResult OutHit);
+	
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float JogSpeed = 360.0f;
 
@@ -98,10 +120,10 @@ public:
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
 	float CurrentHP;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
 	float MaxHP = 100.0f;
 
 	TArray<class AMasterItem*> CanPickupList;

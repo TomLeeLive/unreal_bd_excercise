@@ -40,5 +40,5 @@ public:
 
 	void ToggleInventory();
 	
-	
+	void Dead();
 };

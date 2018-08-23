@@ -35,6 +35,9 @@
 
 #include "UnrealNetwork.h"
 
+#include "Battle/BattleGM.h"
+#include "Battle/BattleGS.h"
+
 //#include "UI/ItemToolTipWidgetBase.h"
 
 // Sets default values
@@ -64,6 +67,7 @@ ABasicPlayer::ABasicPlayer()
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->bUsePawnControlRotation = true;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
@@ -266,31 +270,14 @@ void ABasicPlayer::StopFire()
 	bIsFire = false;
 }
 
-void ABasicPlayer::Shoot()
+
+bool ABasicPlayer::C2S_Shoot_Validate(FVector TraceStart, FVector TraceEnd)
 {
-	if (!bIsFire)
-	{
-		return;
-	}
+	return true;
+}
 
-	//3차원 공간의 카메라 위치와 회전
-	FVector CameraLocation;
-	FRotator CameraRotation;
-	UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetPlayerViewPoint(CameraLocation, CameraRotation);
-
-	//화면 좌표계 크기 가져오기
-	int SizeX;
-	int SizeY;
-	UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetViewportSize(SizeX, SizeY);
-
-	//화면 가운데 2D-> 3D 변환 (카메라를 기준, 플레이 컨트롤러)
-	FVector CrosshairWorldLocation;
-	FVector CrosshairWorldDirection;
-	UGameplayStatics::GetPlayerController(GetWorld(), 0)->DeprojectScreenPositionToWorld(SizeX / 2, SizeY / 2, CrosshairWorldLocation, CrosshairWorldDirection);
-
-	FVector TraceStart = CameraLocation;
-	FVector TraceEnd = CameraLocation + (CrosshairWorldDirection * 80000.0f);
-
+void ABasicPlayer::C2S_Shoot_Implementation(FVector TraceStart, FVector TraceEnd)
+{
 	//광선 추적에 대한 정보 세팅
 	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectType;
 	TArray<AActor*> IgnoreActors;
@@ -320,30 +307,30 @@ void ABasicPlayer::Shoot()
 
 	if (Result)
 	{
-	TraceStart = Weapon->GetSocketLocation(FName(TEXT("MuzzleFlash")));
-	FVector Dir = OutHit.ImpactPoint - TraceStart;
-	TraceEnd = TraceStart + (Dir * 2.0f);
+		TraceStart = Weapon->GetSocketLocation(FName(TEXT("MuzzleFlash")));
+		FVector Dir = OutHit.ImpactPoint - TraceStart;
+		TraceEnd = TraceStart + (Dir * 2.0f);
 
-	//광선 추적
-	Result = UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(),
-		TraceStart,		//트레이스 시작점
-		TraceEnd,		//트레이스 끝점
-		ObjectType,		//트레이싱 검출 될 오브젝트 타입들
-		true,			//복합 컬리전 사용 여부
-		IgnoreActors,	// 무시 액터 리스트
-		EDrawDebugTrace::None,//EDrawDebugTrace::ForDuration, //디버그 라인 그리기 설정
-		OutHit,			//충돌 정보
-		true,			//자기 자신 제외
-		FLinearColor::Green,	//디버그 라인 색깔.
-		FLinearColor::Blue, //충돌 지역 디버그 박스 색깔.
-		5.0					//디버그 라인 그리는 시간.
-	);
+		//광선 추적
+		Result = UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(),
+			TraceStart,		//트레이스 시작점
+			TraceEnd,		//트레이스 끝점
+			ObjectType,		//트레이싱 검출 될 오브젝트 타입들
+			true,			//복합 컬리전 사용 여부
+			IgnoreActors,	// 무시 액터 리스트
+			EDrawDebugTrace::None,//EDrawDebugTrace::ForDuration, //디버그 라인 그리기 설정
+			OutHit,			//충돌 정보
+			true,			//자기 자신 제외
+			FLinearColor::Green,	//디버그 라인 색깔.
+			FLinearColor::Blue, //충돌 지역 디버그 박스 색깔.
+			5.0					//디버그 라인 그리는 시간.
+		);
 
-	//총구 끝에서 총알이 나가서 맞았는지 확인
-	if (Result)
-	{
-		/*
-		UGameplayStatics::ApplyRadialDamage(GetWorld(),
+		//총구 끝에서 총알이 나가서 맞았는지 확인
+		if (Result)
+		{
+			/*
+			UGameplayStatics::ApplyRadialDamage(GetWorld(),
 			100.0f,
 			OutHit.ImpactPoint,
 			300.0f,
@@ -351,51 +338,41 @@ void ABasicPlayer::Shoot()
 			IgnoreActors,
 			this,
 			GetController()
-		);
-		*/
-		APawn* Hitter = Cast<APawn>(OutHit.GetActor());
+			);
+			*/
+			APawn* Hitter = Cast<APawn>(OutHit.GetActor());
 
-		if (Hitter)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
-				BloodEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+			if (Hitter)
+			{
+				//이펙트는 전체 처리
+				S2A_BloodEffect(OutHit);
 
-			UGameplayStatics::ApplyPointDamage(OutHit.GetActor(),
-				30.0f,
-				TraceEnd - TraceStart,
-				OutHit,
-				GetController(),
-				this,
-				UBasicDamageType::StaticClass());
-		}
-		else
-		{
-			//탄흔 이펙트
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
-				HitEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+				//데미지 처리는 Host Only
+				UGameplayStatics::ApplyPointDamage(OutHit.GetActor(),
+					30.0f,
+					TraceEnd - TraceStart,
+					OutHit,
+					GetController(),
+					this,
+					UBasicDamageType::StaticClass());
+			}
+			else
+			{
+				//이펙트는 전체 처리
+				S2A_SpawnDecalAndHitEffect(OutHit);
+			}
 
-			//총알 구멍, 데칼
-			UDecalComponent* Decal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(),
-				BulletDecal,
-				FVector(0.3f, 5.0f, 5.0f),
-				OutHit.ImpactPoint, OutHit.ImpactNormal.Rotation(), 10.0f);
-
-			Decal->SetFadeScreenSize(0.01f); //화면이 차지하는 비율보다 작으면 안보이게
 		}
 
 	}
 
-	}
+	//총구 화염, 사운드 네트워크 처리.
+	S2A_SpawnMuzzleFlashAndSound();
+}
 
-	//반동 카메라 흔들기
-	UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0)->PlayCameraShake(URifleCameraShake::StaticClass());
-
-	//총구 방향 반동 주기
-	FRotator CurrentRotation = GetControlRotation();
-	CurrentRotation.Pitch += 2.0f;
-	CurrentRotation.Yaw += FMath::RandRange(-1.5f, 1.5f);
-	GetController()->SetControlRotation(CurrentRotation);
-
+//Host -> 모든 클라이언트
+void ABasicPlayer::S2A_SpawnMuzzleFlashAndSound_Implementation()
+{
 	//총소리
 	UGameplayStatics::SpawnSoundAtLocation(GetWorld(),
 		ShootSound, Weapon->GetComponentLocation(),
@@ -406,6 +383,85 @@ void ABasicPlayer::Shoot()
 
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
 		MuzzleFlash, MuzzleTransform);
+}
+
+void ABasicPlayer::S2A_DeadProcess_Implementation()
+{
+	//죽는 처리
+	GetMesh()->SetSimulatePhysics(true);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	
+
+	ABattlePC* PC = Cast<ABattlePC>(GetController());
+
+	if (PC)
+	{
+		PC->Dead();//관전자 상태로 전환
+		DisableInput(PC); // 유저 입력 막기
+	}
+
+}
+
+void ABasicPlayer::S2A_BloodEffect_Implementation(FHitResult OutHit)
+{
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
+		BloodEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+}
+
+void ABasicPlayer::S2A_SpawnDecalAndHitEffect_Implementation(FHitResult OutHit)
+{
+	//탄흔 이펙트
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
+		HitEffect, OutHit.ImpactPoint, FRotator::ZeroRotator);
+
+	//총알 구멍, 데칼
+	UDecalComponent* Decal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(),
+		BulletDecal,
+		FVector(0.3f, 5.0f, 5.0f),
+		OutHit.ImpactPoint, OutHit.ImpactNormal.Rotation(), 10.0f);
+
+	Decal->SetFadeScreenSize(0.01f); //화면이 차지하는 비율보다 작으면 안보이게
+}
+
+void ABasicPlayer::Shoot()
+{
+	if (!bIsFire)
+	{
+		return;
+	}
+
+	//3차원 공간의 카메라 위치와 회전
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+	//화면 좌표계 크기 가져오기
+	int SizeX;
+	int SizeY;
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetViewportSize(SizeX, SizeY);
+
+	//화면 가운데 2D-> 3D 변환 (카메라를 기준, 플레이 컨트롤러)
+	FVector CrosshairWorldLocation;
+	FVector CrosshairWorldDirection;
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->DeprojectScreenPositionToWorld(SizeX / 2, SizeY / 2, CrosshairWorldLocation, CrosshairWorldDirection);
+
+	FVector TraceStart = CameraLocation;
+	FVector TraceEnd = CameraLocation + (CrosshairWorldDirection * 80000.0f);
+
+
+	C2S_Shoot(TraceStart, TraceEnd); // 판정은 서버가
+
+	
+
+	//반동 카메라 흔들기
+	UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0)->PlayCameraShake(URifleCameraShake::StaticClass());
+
+	//총구 방향 반동 주기
+	FRotator CurrentRotation = GetControlRotation();
+	CurrentRotation.Pitch += 2.0f;
+	CurrentRotation.Yaw += FMath::RandRange(-1.5f, 1.5f);
+	GetController()->SetControlRotation(CurrentRotation);
 
 	if (bIsFire)
 	{
@@ -469,9 +525,30 @@ float ABasicPlayer::TakeDamage(float DamageAmount, FDamageEvent const & DamageEv
 	if (CurrentHP <= 0)
 	{
 		CurrentHP = 0;
-		//죽는 처리
-		GetMesh()->SetSimulatePhysics(true);
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		S2A_DeadProcess();
+
+		/*
+		ABattleGM* GM = Cast<ABattleGM>(UGameplayStatics::GetGameMode(GetWorld()));
+
+		if (GM)
+		{
+			GM->AliveCount--;
+		}
+		*/
+
+		ABattleGS* GS = Cast<ABattleGS>(UGameplayStatics::GetGameState(GetWorld()));
+
+		if (GS)
+		{
+			GS->AliveCount--;
+
+
+			//호스트에서는 호출해줘야 함. AliveCount 변수가 ReplicatedUsing 을 사용하고 있으므로..
+			if (HasAuthority())
+			{
+				GS->OnRep_AliveCount();
+			}
+		}
 	}
 
 	return DamageAmount;
@@ -586,5 +663,6 @@ void ABasicPlayer::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABasicPlayer, bIsIronSight);
-
+	DOREPLIFETIME(ABasicPlayer, CurrentHP);
+	DOREPLIFETIME(ABasicPlayer, MaxHP);
 }
