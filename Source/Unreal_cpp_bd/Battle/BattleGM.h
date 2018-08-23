@@ -14,7 +14,13 @@ class UNREAL_CPP_BD_API ABattleGM : public AGameModeBase
 {
 	GENERATED_BODY()
 	
+public:
+	ABattleGM();
 	
-	
+	//Not Seamless
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	//Seamless Load
+	virtual void HandleStartingNewPlayer(APlayerController* NewPlayer);
 	
 };

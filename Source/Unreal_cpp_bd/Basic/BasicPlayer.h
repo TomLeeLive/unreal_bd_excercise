@@ -43,12 +43,17 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		class UWeaponComponent* Weapon;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
 	bool bIsIronSight = false;
 	
 	void TryCrouch();
 
 	void TryIronsight();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void C2S_TryIronsight();
+	bool C2S_TryIronsight_Validate();
+	void C2S_TryIronsight_Implementation();
 
 	void StartFire();
 	void StopFire();
@@ -112,4 +117,5 @@ public:
 
 	void Inventory();
 	AMasterItem * GetClosestItem();
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 };

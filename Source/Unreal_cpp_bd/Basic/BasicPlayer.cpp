@@ -30,6 +30,11 @@
 
 #include "Battle/BattlePC.h"
 
+#include "Battle/BattleWidgetBase.h"
+#include "Components/ProgressBar.h"
+
+#include "UnrealNetwork.h"
+
 //#include "UI/ItemToolTipWidgetBase.h"
 
 // Sets default values
@@ -145,6 +150,15 @@ void ABasicPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+
+	auto PC = Cast<ABattlePC>(GetController());
+	if (PC)
+	{
+		if (PC->BattleWidget) //Widget생성이 됬던 Local Pawn
+		{
+			PC->BattleWidget->HPBar->SetPercent(CurrentHP / MaxHP);
+		}
+	}
 }
 
 // Called to bind functionality to input
@@ -226,10 +240,19 @@ void ABasicPlayer::TryCrouch()
 	}
 }
 
-void ABasicPlayer::TryIronsight()
+void ABasicPlayer::TryIronsight() // BindAction 딜리게이트.
 {
-	bIsIronSight = bIsIronSight ? false : true;
-	// 조준중에는 걷는 속도
+	C2S_TryIronsight();//네트워크를 통해서 호스트의 정보 바꿔줌.
+}
+
+bool ABasicPlayer::C2S_TryIronsight_Validate()
+{
+	return true;
+}
+
+void ABasicPlayer::C2S_TryIronsight_Implementation()
+{
+	bIsIronSight = bIsIronSight ? false : true; // 호스트 정보가 바뀌면 자동으로 클라이언트한테 전송.
 }
 
 void ABasicPlayer::StartFire()
@@ -556,4 +579,12 @@ AMasterItem* ABasicPlayer::GetClosestItem()
 	}
 
 	return Result;
+}
+
+void ABasicPlayer::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABasicPlayer, bIsIronSight);
+
 }

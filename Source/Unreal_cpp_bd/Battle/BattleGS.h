@@ -14,7 +14,13 @@ class UNREAL_CPP_BD_API ABattleGS : public AGameStateBase
 {
 	GENERATED_BODY()
 	
-	
-	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_AliveCount)
+	int AliveCount = 0;
+
+	UFUNCTION()
+	void OnRep_AliveCount();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 };
