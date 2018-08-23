@@ -22,11 +22,13 @@
 #include "Basic/RifleCameraShake.h"
 #include "Basic/BasicDamageType.h"
 #include "Item/MasterItem.h"
-#include "Basic/BasicPC.h"
+//#include "Basic/BasicPC.h"
 #include "UI/ItemSlotWidgetBase.h"
 #include "UI/InventoryWidgetBase.h"
 //#include "Item/ItemDataTable.h"
 #include "Item/ItemDataTableComponent.h"
+
+#include "Battle/BattlePC.h"
 
 //#include "UI/ItemToolTipWidgetBase.h"
 
@@ -477,8 +479,8 @@ void ABasicPlayer::RemovePickupItemList(AMasterItem * Item)
 
 void ABasicPlayer::ViewItemToolTip()
 {
-	//ABasicPC* PC = Cast<ABasicPC>(GetController());
-	ABasicPC* PC = Cast<ABasicPC>(UGameplayStatics::GetPlayerController(GetWorld(),0));
+	//ABattlePC* PC = Cast<ABattlePC>(GetController());
+	ABattlePC* PC = Cast<ABattlePC>(UGameplayStatics::GetPlayerController(GetWorld(),0));
 
 	if (!PC)
 	{
@@ -510,7 +512,7 @@ void ABasicPlayer::Pickup()
 
 	if (PickupItem && !PickupItem->IsPendingKill())
 	{
-		ABasicPC* PC = Cast<ABasicPC>(GetController());
+		ABattlePC* PC = Cast<ABattlePC>(GetController());
 		if (PC)
 		{
 			//bool Result = PC->InventoryWidget->InsertItem(PickupItem->DataTable->GetItemData(PickupItem->ItemIndex));
@@ -531,7 +533,7 @@ void ABasicPlayer::Pickup()
 
 void ABasicPlayer::Inventory()
 {
-	ABasicPC* PC = Cast<ABasicPC>(GetController());
+	ABattlePC* PC = Cast<ABattlePC>(GetController());
 	if (PC)
 	{
 		PC->ToggleInventory();

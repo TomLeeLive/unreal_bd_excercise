@@ -28,5 +28,8 @@ public:
 	
 	UFUNCTION()
 	void OnTextCommit(const FText & Text, ETextCommit::Type CommitMethod);
+	void AddChatMessage(const FText & AddMessage);
 	void HideStartButton();
+
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 };

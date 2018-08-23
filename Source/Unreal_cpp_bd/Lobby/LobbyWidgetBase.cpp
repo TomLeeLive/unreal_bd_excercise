@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+Ôªø// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "LobbyWidgetBase.h"
 #include "Components/EditableTextBox.h"
@@ -10,6 +10,9 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "BDGI.h"
+
+#include "Components/ScrollBoxSlot.h"
+#include "Lobby/LobbyGS.h"
 
 void ULobbyWidgetBase::NativeConstruct()
 {
@@ -57,11 +60,11 @@ void  ULobbyWidgetBase::OnTextCommit(const FText& Text, ETextCommit::Type Commit
 			//UE_LOG(LogClass, Warning, TEXT("CCCCCCCCCCC"), );
 			if (Text.IsEmpty())
 			{
-				//√§∆√ ≥°
+				//Ï±ÑÌåÖ ÎÅù
 			}
 			else
 			{
-				//√§∆√ ¿¸º€
+				//Ï±ÑÌåÖ Ï†ÑÏÜ°
 				auto GI = Cast<UBDGI>(UGameplayStatics::GetGameInstance(GetWorld()));
 				
 				if (GI)
@@ -70,8 +73,33 @@ void  ULobbyWidgetBase::OnTextCommit(const FText& Text, ETextCommit::Type Commit
 
 					FString Message = FString::Printf(TEXT("%s : %s"), *GI->UserID.ToString(), *Text.ToString());
 					PC->C2S_SendChatMessage(FText::FromString(Message));
+
+					ChattingInput->SetText(FText::FromString(TEXT("")));
 				}
 			}
+		}
+		else if (CommitMethod == ETextCommit::OnCleared)
+		{
+			ChattingInput->SetUserFocus(PC);
+		}
+	}
+}
+
+void ULobbyWidgetBase::AddChatMessage(const FText& AddMessage)
+{
+	if (ChattingBox)
+	{
+		UTextBlock* NewTextBlock = NewObject<UTextBlock>(ChattingBox);
+		
+		if (NewTextBlock)
+		{
+			NewTextBlock->SetText(AddMessage);
+			ChattingBox->AddChild(NewTextBlock);
+
+			//UScrollBoxSlot* Slot = Cast<UScrollBoxSlot>(NewTextBlock->Slot);
+			//Slot->HorizontalAlignment = EHorizontalAlignment::HAlign_Right;
+
+			ChattingBox->ScrollToEnd();
 		}
 	}
 }
@@ -83,4 +111,19 @@ void  ULobbyWidgetBase::HideStartButton()
 		StartGameButton->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
+}
+
+void ULobbyWidgetBase::NativeTick(const FGeometry & MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	/*
+
+	ALobbyGS* GS = Cast<ALobbyGS>(UGameplayStatics::GetGameState(GetWorld()));
+
+	if (GS)
+	{
+		FString UserCount = FString::Printf(TEXT("%dÎ™Ö Ìï©Î•ò"), GS->UserCount);
+		Alive->SetText(FText::FromString(UserCount));
+	}
+	*/
 }

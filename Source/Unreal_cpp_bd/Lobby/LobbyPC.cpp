@@ -75,9 +75,9 @@ void ALobbyPC::S2C_AddChatMessage_Implementation(const FText & NewMessage)
 {
 	if (LobbyWidget)
 	{
-		//LobbyWidget->AddChatMessage(NewMessage);
+		LobbyWidget->AddChatMessage(NewMessage);
 		//UE_LOG(LogClass, Warning, TEXT("GGGGGGGGGGGGG"), );
 
-		UE_LOG(LogClass, Warning, TEXT("%s"), *NewMessage.ToString());
+		//UE_LOG(LogClass, Warning, TEXT("%s"), *NewMessage.ToString());
 	}
 }
